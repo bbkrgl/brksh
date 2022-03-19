@@ -6,8 +6,38 @@
 #include <sys/wait.h>
 
 #include "brkshell/struct.h"
+#include "brkshell/helper.h"
+#include "brkshell/builtin.h"
 
 #define LENGTH 1000
+
+static inline void free_cmd(command_t* cmd)
+{
+	int j;
+	for (j = 0; j < cmd->arg_c; j++)
+		free(cmd->args[j]); // TODO: Check memleak
+	free(cmd);
+}
+
+static inline int execute_process(command_t* cmd)
+{
+	int pid;
+
+	if (!(pid = fork())) {
+		printf("Executing command...\n");
+		execvp(cmd->cmd, cmd->args);
+
+		fprintf(stderr, "Something happened ;)\n");
+		fprintf(stderr, "Just joking, here is the error trace:\n%s\n", strerror(errno));
+
+		free_cmd(cmd);
+
+		exit(errno);
+	} else if (pid == -1) {
+		fprintf(stderr, "Cannot fork process, you're forked!\n");
+	}
+	return pid;
+}
 
 int main(int argc, char* argv[])
 {
@@ -15,16 +45,14 @@ int main(int argc, char* argv[])
 	char command_array[LENGTH];
 
 	int i = 0;
-	int j = 0;
-	int cmd_c = 0;
+	char cmd_c = 0;
 	int pid;
 	int child_status;
-	int errcode;
 
 	command_t* cmd;
 
 	char* SHELL_STRING = "$----> "; // TODO: Can be read from env etc.
-	char* PATH = "/bin/";
+	char* PATH = "/bin/"; // TODO: PATH var
 
 	printf("%s", SHELL_STRING);
 
@@ -39,12 +67,7 @@ int main(int argc, char* argv[])
 				cmd->cmd_len = i;
 				cmd->cmd = malloc((i + 1) * sizeof(char));
 
-				for (j = 0; j < i; j++) {
-					cmd->cmd[j] = command_array[j];
-					command_array[j] = 0;
-				}
-
-				cmd->cmd[j] = '\0';
+				eqstr_del(cmd->cmd, command_array, i);
 
 				cmd->arg_c = 1;
 				cmd->args = malloc(sizeof(char*));
@@ -58,12 +81,7 @@ int main(int argc, char* argv[])
 				cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
 				cmd->args[cmd->arg_c] = malloc((i + 1) * sizeof(char));
 
-				for (j = 0; j < i; j++) {
-					cmd->args[cmd->arg_c][j] = command_array[j];
-					command_array[j] = 0;
-				}
-
-				cmd->args[cmd->arg_c][j] = '\0';
+				eqstr_del(cmd->args[cmd->arg_c], command_array, i);
 
 				cmd->arg_c++;
 			}
@@ -75,40 +93,27 @@ int main(int argc, char* argv[])
 				continue;
 			}
 
+			if (!strcmp(cmd->cmd, "exit")) {
+				printf("Bye...\n");
+				free_cmd(cmd);
+				return 0;
+			}
+
 			cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
 			cmd->args[cmd->arg_c] = NULL;
 
-			if (!(pid = fork())) {
-				printf("Executing command...\n");
-				execvp(cmd->cmd, cmd->args);
-
-				fprintf(stderr, "Something happened ;)\n");
-				fprintf(stderr, "Just joking, here is the error trace:\n%s\n", strerror(errno));
-				
-				free(cmd->cmd);
-				for (j = 1; j < cmd->arg_c; j++)
-					free(cmd->args[j]);
-				free(cmd->args);
-				free(cmd);
-
-				exit(0);
-			} else if (pid == -1) {
-				fprintf(stderr, "Cannot fork process, you're forked!\n");
-			}
+			pid = execute_process(cmd);
 
 			wait(&child_status);
 
 			if (WIFEXITED(child_status))
-				printf("Child pid:%d exited successfully with status %d.\n", pid, WEXITSTATUS(child_status));
+				printf("Child pid:%d exited successfully with status %d.\n",
+						pid, WEXITSTATUS(child_status));
 
 			i = 0;
-			cmd_c = 0;
-			free(cmd->cmd);
-			for (j = 1; j < cmd->arg_c; j++)
-				free(cmd->args[j]);
-			free(cmd->args);
-			free(cmd);
-			
+			cmd_c = 0;	
+			free_cmd(cmd);
+
 			printf("%s", SHELL_STRING);
 		} else {
 			command_array[i] = curr;
