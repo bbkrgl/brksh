@@ -3,4 +3,4 @@ brkshell
 
 TODOS:
 - Read env vars, PATH etc.
-- exec
+- pipe, redirect out
