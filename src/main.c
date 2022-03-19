@@ -1,43 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/wait.h>
-
-#include "brkshell/struct.h"
-#include "brkshell/helper.h"
+#include "brkshell/misc.h"
 #include "brkshell/builtin.h"
 
 #define LENGTH 1000
-
-static inline void free_cmd(command_t* cmd)
-{
-	int j;
-	for (j = 0; j < cmd->arg_c; j++)
-		free(cmd->args[j]); // TODO: Check memleak
-	free(cmd);
-}
-
-static inline int execute_process(command_t* cmd)
-{
-	int pid;
-
-	if (!(pid = fork())) {
-		printf("Executing command...\n");
-		execvp(cmd->cmd, cmd->args);
-
-		fprintf(stderr, "Something happened ;)\n");
-		fprintf(stderr, "Just joking, here is the error trace:\n%s\n", strerror(errno));
-
-		free_cmd(cmd);
-
-		exit(errno);
-	} else if (pid == -1) {
-		fprintf(stderr, "Cannot fork process, you're forked!\n");
-	}
-	return pid;
-}
 
 int main(int argc, char* argv[])
 {
