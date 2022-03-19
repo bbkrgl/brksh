@@ -1,5 +1,5 @@
-#ifndef __BRKSHELL__MISC__
-#define __BRKSHELL__MISC__
+#ifndef __BRKSHELL_MISC__
+#define __BRKSHELL_MISC__
 
 #include <unistd.h>
 #include <errno.h>
@@ -24,11 +24,20 @@ static inline void free_cmd(command_t* cmd)
 	free(cmd);
 }
 
-static inline int execute_process(command_t* cmd)
+static inline int execute_process(command_t* cmd, int child_fd)
 {
 	int pid;
 
+	cmd->args = (char**) realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
+	cmd->args[cmd->arg_c] = NULL;
+
 	if (!(pid = fork())) {
+		int oldfd = dup(STDOUT_FILENO);
+
+		dup2(STDOUT_FILENO, child_fd);
+		if (oldfd == -1)
+			fprintf(stderr, "%s", strerror(errno));
+
 		printf("Executing command...\n");
 		execvp(cmd->cmd, cmd->args);
 
@@ -55,6 +64,5 @@ static inline void eqstr_del(char* str1, char* str2, int len)
 	
 	str1[j] = '\0';
 }
-
 
 #endif

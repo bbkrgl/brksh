@@ -11,6 +11,7 @@ I try to follow linux kernel coding style as strictly as possible, so if you're 
 https://www.kernel.org/doc/html/v4.10/process/coding-style.html
 
 # TODOS:
+- Fix usage of commands like ls (ls -a looks for -a folder)
 - Read env vars, PATH etc.
 - pipe, redirect out
 - cd and other shell commands

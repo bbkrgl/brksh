@@ -51,6 +51,24 @@ int main(int argc, char* argv[])
 			}
 			i = 0;
 		}
+
+		if (curr == '|') {
+			if (i != 0) {
+				cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
+				cmd->args[cmd->arg_c] = malloc((i + 1) * sizeof(char));
+
+				eqstr_del(cmd->args[cmd->arg_c], command_array, i);
+
+				cmd->arg_c++;
+				i = 0;
+			}
+
+			// Execute process, while redirecting fd to something else
+			// Not sure if change the parent or the child fd to a new stream
+
+			cmd_c = 0;
+		}
+
 		if (curr == '\n') {
 			if (cmd_c == 0) {
 				printf("%s", SHELL_STRING);
@@ -63,10 +81,7 @@ int main(int argc, char* argv[])
 				return 0;
 			}
 
-			cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
-			cmd->args[cmd->arg_c] = NULL;
-
-			pid = execute_process(cmd);
+			pid = execute_process(cmd, STDOUT_FILENO);
 
 			wait(&child_status);
 
