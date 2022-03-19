@@ -14,4 +14,5 @@ https://www.kernel.org/doc/html/v4.10/process/coding-style.html
 - Read env vars, PATH etc.
 - pipe, redirect out
 - cd and other shell commands
+- Check memleaks
 - Docs (In the very distant future)

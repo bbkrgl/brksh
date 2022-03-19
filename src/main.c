@@ -84,6 +84,14 @@ int main(int argc, char* argv[])
 
 				fprintf(stderr, "Something happened ;)\n");
 				fprintf(stderr, "Just joking, here is the error trace:\n%s\n", strerror(errno));
+				
+				free(cmd->cmd);
+				for (j = 1; j < cmd->arg_c; j++)
+					free(cmd->args[j]);
+				free(cmd->args);
+				free(cmd);
+
+				exit(0);
 			} else if (pid == -1) {
 				fprintf(stderr, "Cannot fork process, you're forked!\n");
 			}
