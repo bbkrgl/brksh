@@ -1,27 +1,31 @@
 #include "brkshell/misc.h"
 #include "brkshell/builtin.h"
 
-#define LENGTH 1000
+#define BUFFER_SIZE 1000
 
 int main(int argc, char* argv[])
 {
 	char curr;
-	char command_array[LENGTH];
+	char strbuffer[BUFFER_SIZE];
 
 	int i = 0;
 	char cmd_c = 0;
 	int pid;
 	int child_status;
 	int pipefd[2] = {STDIN_FILENO, STDOUT_FILENO};
+	int rdr_mode = 0; // No redirect
 
 	command_t* cmd;
 
-	char* SHELL_STRING = "$----> "; // TODO: Can be read from env etc.
-	char* PATH = "/bin/"; // TODO: PATH var
+	char* cwd = getcwd(NULL, 0);
+	char* PROMPT_FORMAT = "%s%s";
+	char* SHELL_STRING = " $---> ";
 
-	printf("%s", SHELL_STRING);
+	char* PATH = "/bin/"; // TODO: PATH and other env vars
 
-	while ((curr = getchar()) != EOF && i < LENGTH) {
+	printf(PROMPT_FORMAT, cwd, SHELL_STRING);
+
+	while ((curr = getchar()) != EOF && i < BUFFER_SIZE) {
 		if (curr == ' ' || (curr == '\n' && i != 0)) {
 			if (i == 0)
 				continue;
@@ -32,7 +36,7 @@ int main(int argc, char* argv[])
 				cmd->cmd_len = i;
 				cmd->cmd = malloc((i + 1) * sizeof(char));
 
-				eqstr_del(cmd->cmd, command_array, i);
+				eqstr_del(cmd->cmd, strbuffer, i);
 
 				cmd->arg_c = 1;
 				cmd->args = malloc(sizeof(char*));
@@ -43,7 +47,7 @@ int main(int argc, char* argv[])
 				cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
 				cmd->args[cmd->arg_c] = malloc((i + 1) * sizeof(char));
 
-				eqstr_del(cmd->args[cmd->arg_c], command_array, i);
+				eqstr_del(cmd->args[cmd->arg_c], strbuffer, i);
 
 				cmd->arg_c++;
 			}
@@ -53,19 +57,26 @@ int main(int argc, char* argv[])
 				continue;
 		}
 
+		if (curr == '>') { // TODO: Sth like | after > will mess up things, check syntax
+			if ((curr = getchar()) == '>')
+				rdr_mode = 2;
+			else
+				rdr_mode = 1; // TODO: Other modes, writing on stderr etc.
+		}
+
 		if (curr == '|') {
 			if (i != 0) {
 				cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
 				cmd->args[cmd->arg_c] = malloc((i + 1) * sizeof(char));
 
-				eqstr_del(cmd->args[cmd->arg_c], command_array, i);
+				eqstr_del(cmd->args[cmd->arg_c], strbuffer, i);
 
 				cmd->arg_c++;
 				i = 0;
 			}
 		
-			if (!pipe(pipefd)) // Create pipe
-				pid = execute_process(cmd, pipefd[0], pipefd[1]); // Make new process use the pipe
+			if (!pipe(pipefd))
+				pid = execute_process(cmd, pipefd[0], pipefd[1]);
 			else
 				fprintf(stderr, "%s\n", strerror(errno));
 
@@ -81,7 +92,7 @@ int main(int argc, char* argv[])
 
 		if (curr == '\n') {
 			if (cmd_c == 0) {
-				printf("%s", SHELL_STRING);
+				printf(PROMPT_FORMAT, cwd, SHELL_STRING);
 				continue;
 			}
 
@@ -102,14 +113,34 @@ int main(int argc, char* argv[])
 				cmd_c = 0;
 				free_cmd(cmd);
 
-				printf("%s", SHELL_STRING);
+				printf(PROMPT_FORMAT, cwd, SHELL_STRING);
 				continue;
 			}
 
 			if (pipefd[1] != STDOUT_FILENO && close(pipefd[1]))
 				fprintf(stderr, "%s\n", strerror(errno));
 
-			pid = execute_process(cmd, pipefd[0], STDOUT_FILENO);
+			if (rdr_mode == 1 || rdr_mode == 2) { // TODO: Don't know how to handle cmds like ... >> ... | ... , may fail
+				int fd = open(cmd->args[cmd->arg_c-1], O_CREAT|O_TRUNC|O_RDWR); // TODO: Permissions
+
+				if (fd != -1) {
+					pid = execute_process(cmd, pipefd[0], pipefd[1]);
+				} else {
+					fprintf(stderr, "%s\n", strerror(errno));
+				
+					i = 0;
+					cmd_c = 0;
+					free_cmd(cmd);
+
+					printf(PROMPT_FORMAT, cwd, SHELL_STRING);
+					continue;
+				}
+
+				close(fd);
+			} else {
+				pid = execute_process(cmd, pipefd[0], STDOUT_FILENO);
+			}
+
 
 			wait(&child_status);
 	
@@ -125,10 +156,12 @@ int main(int argc, char* argv[])
 			pipefd[0] = STDIN_FILENO, pipefd[1] = STDOUT_FILENO;
 			free_cmd(cmd);
 
-			printf("%s", SHELL_STRING);
+			printf(PROMPT_FORMAT, cwd, SHELL_STRING);
 		} else {
-			command_array[i] = curr;
+			strbuffer[i] = curr;
 			i++;
 		}
 	}
+
+	return 0;
 }

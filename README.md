@@ -11,9 +11,9 @@ I try to follow linux kernel coding style as strictly as possible, so if you're 
 https://www.kernel.org/doc/html/v4.10/process/coding-style.html
 
 # TODOS:
-- ~Fix parsing (ls -a looks for ' -a' dir)~ -> Fix too ugly
+- Write a proper parser (again)
 - Read env vars, PATH etc.
-- ~pipe~, redirect out
+- ~pipe~, redirect ~out~(errors due to parser), in
 - ~cd~ and other shell commands (what are they?)
 - Keyboard inputs etc.
 - Check memleaks
