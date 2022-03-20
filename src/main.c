@@ -23,10 +23,10 @@ int main(int argc, char* argv[])
 
 	while ((curr = getchar()) != EOF && i < LENGTH) {
 		if (curr == ' ' || (curr == '\n' && i != 0)) {
-			if (cmd_c == 0) {
-				if (i == 0)
-					continue;
+			if (i == 0)
+				continue;
 
+			if (cmd_c == 0) {
 				cmd = malloc(sizeof(command_t));
 
 				cmd->cmd_len = i;
@@ -40,9 +40,6 @@ int main(int argc, char* argv[])
 
 				cmd_c++;
 			} else {
-				if (i == 0)
-					continue;
-
 				cmd->args = realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
 				cmd->args[cmd->arg_c] = malloc((i + 1) * sizeof(char));
 
@@ -51,6 +48,9 @@ int main(int argc, char* argv[])
 				cmd->arg_c++;
 			}
 			i = 0;
+
+			if (curr == ' ') // TODO: Too ugly, do sth
+				continue;
 		}
 
 		if (curr == '|') {
