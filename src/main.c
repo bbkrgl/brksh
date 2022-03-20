@@ -12,6 +12,7 @@ int main(int argc, char* argv[])
 	char cmd_c = 0;
 	int pid;
 	int child_status;
+	int pipefd[2] = {STDIN_FILENO, STDOUT_FILENO};
 
 	command_t* cmd;
 
@@ -62,11 +63,20 @@ int main(int argc, char* argv[])
 				cmd->arg_c++;
 				i = 0;
 			}
+		
+			if (!pipe(pipefd)) // Create pipe
+				pid = execute_process(cmd, pipefd[0], pipefd[1]); // Make new process use the pipe
+			else
+				fprintf(stderr, "%s", strerror(errno));
 
-			// Execute process, while redirecting fd to something else
-			// Not sure if change the parent or the child fd to a new stream
-
+			wait(&child_status);
+			
+			if (WIFEXITED(child_status) && pid != -1)
+				printf("Child pid:%d exited successfully with status %d.\n",
+						pid, WEXITSTATUS(child_status));
+			
 			cmd_c = 0;
+			continue;
 		}
 
 		if (curr == '\n') {
@@ -81,16 +91,23 @@ int main(int argc, char* argv[])
 				return 0;
 			}
 
-			pid = execute_process(cmd, STDOUT_FILENO);
+			if (pipefd[1] != STDOUT_FILENO && close(pipefd[1]))
+				fprintf(stderr, "%s", strerror(errno));
+
+			pid = execute_process(cmd, pipefd[0], STDOUT_FILENO);
 
 			wait(&child_status);
-
-			if (WIFEXITED(child_status))
+	
+			if (WIFEXITED(child_status) && pid != -1)
 				printf("Child pid:%d exited successfully with status %d.\n",
 						pid, WEXITSTATUS(child_status));
-
+			
+			if (pipefd[0] != STDIN_FILENO && close(pipefd[0]))
+				fprintf(stderr, "%s", strerror(errno));
+			
 			i = 0;
-			cmd_c = 0;	
+			cmd_c = 0;
+			pipefd[0] = STDIN_FILENO, pipefd[1] = STDOUT_FILENO;
 			free_cmd(cmd);
 
 			printf("%s", SHELL_STRING);

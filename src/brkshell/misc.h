@@ -6,8 +6,8 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 
 typedef struct command_t {
 	char* cmd;
@@ -24,21 +24,28 @@ static inline void free_cmd(command_t* cmd)
 	free(cmd);
 }
 
-static inline int execute_process(command_t* cmd, int child_fd)
+static inline int execute_process(command_t* cmd, int read_fd, int write_fd)
 {
-	int pid;
+	int pid, old_rd_fd, old_wr_fd;
 
 	cmd->args = (char**) realloc(cmd->args, (cmd->arg_c + 1) * sizeof(char*));
 	cmd->args[cmd->arg_c] = NULL;
 
 	if (!(pid = fork())) {
-		int oldfd = dup(STDOUT_FILENO);
-
-		dup2(STDOUT_FILENO, child_fd);
-		if (oldfd == -1)
+		printf("Executing command %s...\n", cmd->cmd);
+		
+		old_rd_fd = dup2(read_fd, STDIN_FILENO);
+		if (old_rd_fd == -1) {
 			fprintf(stderr, "%s", strerror(errno));
+			return -1;
+		}
 
-		printf("Executing command...\n");
+		old_wr_fd = dup2(write_fd, STDOUT_FILENO);
+		if (old_wr_fd == -1) {
+			fprintf(stderr, "%s", strerror(errno));
+			return -1;
+		}
+
 		execvp(cmd->cmd, cmd->args);
 
 		fprintf(stderr, "Something happened ;)\n");
@@ -50,6 +57,7 @@ static inline int execute_process(command_t* cmd, int child_fd)
 	} else if (pid == -1) {
 		fprintf(stderr, "Cannot fork process, you're forked!\n");
 	}
+
 	return pid;
 }
 
