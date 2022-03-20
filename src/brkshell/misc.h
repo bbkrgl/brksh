@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <pwd.h>
 
 typedef struct command_t {
 	char* cmd;
@@ -36,13 +37,13 @@ static inline int execute_process(command_t* cmd, int read_fd, int write_fd)
 		
 		old_rd_fd = dup2(read_fd, STDIN_FILENO);
 		if (old_rd_fd == -1) {
-			fprintf(stderr, "%s", strerror(errno));
+			fprintf(stderr, "%s\n", strerror(errno));
 			return -1;
 		}
 
 		old_wr_fd = dup2(write_fd, STDOUT_FILENO);
 		if (old_wr_fd == -1) {
-			fprintf(stderr, "%s", strerror(errno));
+			fprintf(stderr, "%s\n", strerror(errno));
 			return -1;
 		}
 

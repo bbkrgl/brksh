@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 			if (!pipe(pipefd)) // Create pipe
 				pid = execute_process(cmd, pipefd[0], pipefd[1]); // Make new process use the pipe
 			else
-				fprintf(stderr, "%s", strerror(errno));
+				fprintf(stderr, "%s\n", strerror(errno));
 
 			wait(&child_status);
 			
@@ -87,12 +87,27 @@ int main(int argc, char* argv[])
 
 			if (!strcmp(cmd->cmd, "exit")) {
 				printf("Bye...\n");
+
 				free_cmd(cmd);
 				return 0;
+			} else if (!strcmp(cmd->cmd, "cd")) {
+				if (cmd->arg_c > 3)
+					fprintf(stderr, "Too many args for cd.\n");
+				else if (cmd->arg_c == 1 && chdir(getpwuid(getuid())->pw_dir))
+					fprintf(stderr, "%s\n", strerror(errno));
+				else if (chdir(cmd->args[1]))
+					fprintf(stderr, "%s\n", strerror(errno));
+				
+				i = 0;
+				cmd_c = 0;
+				free_cmd(cmd);
+
+				printf("%s", SHELL_STRING);
+				continue;
 			}
 
 			if (pipefd[1] != STDOUT_FILENO && close(pipefd[1]))
-				fprintf(stderr, "%s", strerror(errno));
+				fprintf(stderr, "%s\n", strerror(errno));
 
 			pid = execute_process(cmd, pipefd[0], STDOUT_FILENO);
 
@@ -103,7 +118,7 @@ int main(int argc, char* argv[])
 						pid, WEXITSTATUS(child_status));
 			
 			if (pipefd[0] != STDIN_FILENO && close(pipefd[0]))
-				fprintf(stderr, "%s", strerror(errno));
+				fprintf(stderr, "%s\n", strerror(errno));
 			
 			i = 0;
 			cmd_c = 0;

@@ -14,7 +14,7 @@ https://www.kernel.org/doc/html/v4.10/process/coding-style.html
 - ~Fix parsing (ls -a looks for ' -a' dir)~ -> Fix too ugly
 - Read env vars, PATH etc.
 - ~pipe~, redirect out
-- cd and other shell commands
+- ~cd~ and other shell commands (what are they?)
 - Keyboard inputs etc.
 - Check memleaks
 - Docs (In the very distant future)
